@@ -26,38 +26,86 @@
             border: 0;
         }
 
-        .header {
-            border-bottom: 1px solid #6c757d;
-            background-color: #e9ecef;
-        }
-
-        .sidebar {
-            min-width: 200px;
-            border-right: 1px solid #6c757d;
-            background-color: #e9ecef;
-        }
-
         .breadcrumb-item+.breadcrumb-item::before {
             content: '»';
+        }
+
+        #loading {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 999;
+
+            background-color: rgba(0, 0, 0, 0.8);
+            opacity: 1;
+            transition: opacity 0.5s;
+        }
+        #loading.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .lds-ripple {
+            display: inline-block;
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+        .lds-ripple div {
+            position: absolute;
+            border: 4px solid #fff;
+            opacity: 1;
+            border-radius: 50%;
+            animation: lds-ripple 1s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+        }
+        .lds-ripple div:nth-child(2) {
+            animation-delay: -0.5s;
+        }
+        @keyframes lds-ripple {
+            0% {
+                top: 36px;
+                left: 36px;
+                width: 0;
+                height: 0;
+                opacity: 1;
+            }
+            100% {
+                top: 0;
+                left: 0;
+                width: 72px;
+                height: 72px;
+                opacity: 0;
+            }
         }
     </style>
 </head>
 <body class="d-flex">
 
+<div id="loading" class="d-flex align-items-center justify-content-center">
+    <div class="lds-ripple"><div></div><div></div></div>
+</div>
 <div class="d-flex flex-grow-1 flex-column">
-    <div class="header d-flex flex-row align-items-center p-2">
+    <div class="d-flex flex-row align-items-center p-2 border-bottom bg-light">
+        <div class="p-3 border-right text-center text-nowrap">
+            Inicio
+            <div id="startArticleName" class="font-weight-bold">-</div>
+        </div>
+        <div class="p-3 border-right text-center text-nowrap">
+            Pasos
+            <div id="articleCount" class="font-weight-bold">0</div>
+        </div>
         <div class="flex-grow-1">
-            <ol class="breadcrumb m-0" id="breadcrumb">
+            <ol class="breadcrumb my-0 p-3 bg-transparent" id="breadcrumb">
                 <!-- DYNAMIC -->
             </ol>
         </div>
-        <div id="endArticleName" class="p-2"></div>
-    </div>
-    <div class="d-flex flex-grow-1 flex-row">
-        <div class="sidebar text-center p-2">SIDEBAR</div>
-        <div class="flex-grow-1">
-            <iframe id="wiki"></iframe>
+        <div class="p-3 border-left text-center text-nowrap">
+            Destino
+            <div id="endArticleName" class="font-weight-bold">-</div>
         </div>
+    </div>
+    <div class="flex-grow-1">
+        <iframe id="wiki"></iframe>
     </div>
 </div>
 
@@ -74,12 +122,25 @@
   let endArticle;
   let breadcrumb = [];
 
+  const loadingElem = document.querySelector('#loading')
+  const startLoading = () => loadingElem.classList.remove('hide');
+  const endLoading = () => loadingElem.classList.add('hide');
+
   const getArticle = (title) => {
+    startLoading();
     return fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/html/${title}`)
-      .then(response => response.text())
+      .then(response => {
+        endLoading();
+
+        if (response.status === 404) {
+          throw new Error('404 Not Found');
+        }
+
+        return response.text();
+      })
       .then(content => {
         let parsedContent = content;
-        parsedContent = parsedContent.replace('<base href', '<ignorame ');
+        parsedContent = parsedContent.replace('<base href', '<base nohref');
         parsedContent = parsedContent.replace('/w/load.php', `https://${lang}.wikipedia.org/w/load.php`);
 
         return {
@@ -98,6 +159,7 @@
 
       iframe.contentWindow.document.close();
       iframe.contentWindow.document.write(article.content);
+      iframe.contentWindow.document.body.style = 'padding: 25px';
       iframe.contentWindow.document.addEventListener('contextmenu', (event) => {
         event.preventDefault();
       });
@@ -132,10 +194,12 @@
     const elemBreadcrumb = document.querySelector('#breadcrumb');
 
     elemBreadcrumb.innerHTML = '';
-    breadcrumb.forEach((article) => {
+    breadcrumb.slice(1).forEach((article) => {
       let name = cleanName(article.title);
       elemBreadcrumb.insertAdjacentHTML('beforeend', `<li class="breadcrumb-item">${name}</li>`);
     });
+
+    document.querySelector('#articleCount').innerHTML = breadcrumb.length - 1;
   };
 
   const checkWinner = (article) => {
@@ -157,6 +221,7 @@
 
     endArticle = end;
     document.querySelector('#endArticleName').innerHTML = cleanName(end);
+    document.querySelector('#startArticleName').innerHTML = cleanName(start);
   };
 
   document.addEventListener('DOMContentLoaded', () => {
