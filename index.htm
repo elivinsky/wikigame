@@ -67,8 +67,6 @@
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
-<script src="https://unpkg.com/wtf_wikipedia"></script>
-<script src="https://unpkg.com/wtf-plugin-html"></script>
 <script>
   const lang = 'es';
 
@@ -86,7 +84,7 @@
 
         return {
           pageId: content.match('<meta property="mw:pageId" content="(\\d*)"\/>')[1],
-          title: content.match('<link rel="dc:isVersionOf" href="\/\/\\w*\.wikipedia.org\/wiki\/([^"]*)"/>')[1],
+          title: decodeURIComponent(content.match('<link rel="dc:isVersionOf" href="\/\/\\w*\.wikipedia.org\/wiki\/([^"]*)"/>')[1]),
           content: parsedContent,
         };
       });
@@ -124,7 +122,7 @@
     });
   };
 
-  const cleanName = title => decodeURIComponent(title.replace(/_/g, ' '));
+  const cleanName = title => title.replace(/_/g, ' ');
 
   const refreshBreadcrumb = (newArticle) => {
     if (newArticle) {
@@ -144,7 +142,15 @@
     if (article.title === endArticle) {
       alert('Winner!');
     }
-  }
+  };
+
+  const getRandomTitle = () => {
+    return fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/random/title`)
+      .then(response => response.json())
+      .then(({ items }) => {
+        return items[0].title;
+      });
+  };
 
   const startGame = (start, end) => {
     navigateArticle(start);
@@ -154,7 +160,18 @@
   };
 
   document.addEventListener('DOMContentLoaded', () => {
-    startGame('Abraham', 'Jesús_de_Nazaret');
+    const params = new URLSearchParams(location.search);
+    if (params.has('start') && params.has('end')) {
+      startGame(params.get('start'), params.get('end'));
+      return;
+    }
+
+    Promise.all([
+      getRandomTitle(),
+      getRandomTitle(),
+    ]).then(([start, end]) => {
+      startGame(start, end);
+    });
   });
 </script>
 </body>
