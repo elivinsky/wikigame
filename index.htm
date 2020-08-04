@@ -179,7 +179,9 @@
             return;
           }
 
-          navigateArticle(href.substring(2));
+          if (href.substring(0, 2) === './') {
+            navigateArticle(href.substring(2));
+          }
         }
       });
 
@@ -238,8 +240,21 @@
       getRandomTitle(),
       getRandomTitle(),
     ]).then(([start, end]) => {
+      if (start === end) {
+        location.reload();
+        return;
+      }
+
       startGame(start, end);
     });
+  });
+
+  window.addEventListener('beforeunload', (event) => {
+    const confirmationMessage = 'Si te vas perdés todo.';
+
+    event.preventDefault();
+    event.returnValue = confirmationMessage;
+    return confirmationMessage;
   });
 </script>
 </body>
