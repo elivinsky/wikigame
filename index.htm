@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+
+    <title>WikiCarrera</title>
+
+    <style>
+        html, body {
+            height: 100%;
+            overflow: auto;
+            margin: 0;
+        }
+
+        #wiki {
+            width: 100%;
+            height: 100%;
+        }
+
+        iframe {
+            border: 0;
+        }
+
+        .header {
+            border-bottom: 1px solid #6c757d;
+            background-color: #e9ecef;
+        }
+
+        .sidebar {
+            min-width: 200px;
+            border-right: 1px solid #6c757d;
+            background-color: #e9ecef;
+        }
+
+        .breadcrumb-item+.breadcrumb-item::before {
+            content: '»';
+        }
+    </style>
+</head>
+<body class="d-flex">
+
+<div class="d-flex flex-grow-1 flex-column">
+    <div class="header d-flex flex-row align-items-center p-2">
+        <div class="flex-grow-1">
+            <ol class="breadcrumb m-0" id="breadcrumb">
+                <!-- DYNAMIC -->
+            </ol>
+        </div>
+        <div id="endArticleName" class="p-2"></div>
+    </div>
+    <div class="d-flex flex-grow-1 flex-row">
+        <div class="sidebar text-center p-2">SIDEBAR</div>
+        <div class="flex-grow-1">
+            <iframe id="wiki"></iframe>
+        </div>
+    </div>
+</div>
+
+
+<!-- Optional JavaScript -->
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+<script src="https://unpkg.com/wtf_wikipedia"></script>
+<script src="https://unpkg.com/wtf-plugin-html"></script>
+<script>
+  const lang = 'es';
+
+  const iframe = document.querySelector('#wiki');
+  let endArticle;
+  let breadcrumb = [];
+
+  const getArticle = (title) => {
+    return fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/html/${title}`)
+      .then(response => response.text())
+      .then(content => {
+        let parsedContent = content;
+        parsedContent = parsedContent.replace('<base href', '<ignorame ');
+        parsedContent = parsedContent.replace('/w/load.php', `https://${lang}.wikipedia.org/w/load.php`);
+
+        return {
+          pageId: content.match('<meta property="mw:pageId" content="(\\d*)"\/>')[1],
+          title: content.match('<link rel="dc:isVersionOf" href="\/\/\\w*\.wikipedia.org\/wiki\/([^"]*)"/>')[1],
+          content: parsedContent,
+        };
+      });
+  };
+  const navigateArticle = (title) => {
+    console.info('Navigating', title);
+    getArticle(title).then(article => {
+      refreshBreadcrumb(article);
+
+      checkWinner(article);
+
+      iframe.contentWindow.document.close();
+      iframe.contentWindow.document.write(article.content);
+      iframe.contentWindow.document.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+      });
+      iframe.contentWindow.document.addEventListener('auxclick', (event) => {
+        event.preventDefault();
+      });
+      iframe.contentWindow.document.addEventListener('click', (event) => {
+        if (event.target.tagName === 'A') {
+          event.preventDefault();
+
+          const href = event.target.getAttribute('href');
+
+          const isRef = href.startsWith(`./${article.title}`) && href.includes('#');
+          if (isRef) {
+            iframe.contentWindow.document.location.href = href.substring(href.indexOf('#'));
+            return;
+          }
+
+          navigateArticle(href.substring(2));
+        }
+      });
+    });
+  };
+
+  const cleanName = title => decodeURIComponent(title.replace(/_/g, ' '));
+
+  const refreshBreadcrumb = (newArticle) => {
+    if (newArticle) {
+      breadcrumb.push(newArticle);
+    }
+
+    const elemBreadcrumb = document.querySelector('#breadcrumb');
+
+    elemBreadcrumb.innerHTML = '';
+    breadcrumb.forEach((article) => {
+      let name = cleanName(article.title);
+      elemBreadcrumb.insertAdjacentHTML('beforeend', `<li class="breadcrumb-item">${name}</li>`);
+    });
+  };
+
+  const checkWinner = (article) => {
+    if (article.title === endArticle) {
+      alert('Winner!');
+    }
+  }
+
+  const startGame = (start, end) => {
+    navigateArticle(start);
+
+    endArticle = end;
+    document.querySelector('#endArticleName').innerHTML = cleanName(end);
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    startGame('Abraham', 'Jesús_de_Nazaret');
+  });
+</script>
+</body>
+</html>
