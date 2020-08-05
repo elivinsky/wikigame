@@ -146,9 +146,15 @@
         parsedContent = parsedContent.replace('<base href', '<base nohref');
         parsedContent = parsedContent.replace('/w/load.php', `https://${lang}.wikipedia.org/w/load.php`);
 
+        const titleMatch = content.match('<link rel="dc:isVersionOf" href="\/\/\\w*\.wikipedia.org\/wiki\/([^"]*)"/>');
+
+        if (!titleMatch) {
+          throw new Error('Not An Article');
+        }
+
         return {
           pageId: content.match('<meta property="mw:pageId" content="(\\d*)"\/>')[1],
-          title: decodeURIComponent(content.match('<link rel="dc:isVersionOf" href="\/\/\\w*\.wikipedia.org\/wiki\/([^"]*)"/>')[1]),
+          title: decodeURIComponent(titleMatch[1]),
           content: parsedContent,
         };
       });
@@ -168,10 +174,11 @@
         event.preventDefault();
       });
       iframe.contentWindow.document.addEventListener('click', (event) => {
-        if (event.target.tagName === 'A') {
+        const anchorTarget = event.path.find(elem => elem.tagName === 'A');
+        if (anchorTarget) {
           event.preventDefault();
 
-          const href = event.target.getAttribute('href');
+          const href = anchorTarget.getAttribute('href');
 
           const isRef = href.startsWith(`./${article.title}`) && href.includes('#');
           if (isRef) {
