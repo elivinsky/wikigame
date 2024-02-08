@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
 
     <title>WikiCarrera</title>
 
@@ -26,7 +28,7 @@
             border: 0;
         }
 
-        .breadcrumb-item+.breadcrumb-item::before {
+        .breadcrumb-item + .breadcrumb-item::before {
             content: '»';
         }
 
@@ -40,6 +42,7 @@
             opacity: 1;
             transition: opacity 0.5s;
         }
+
         .fullscreen.hide {
             opacity: 0;
             pointer-events: none;
@@ -51,6 +54,7 @@
             width: 80px;
             height: 80px;
         }
+
         .lds-ripple div {
             position: absolute;
             border: 4px solid #fff;
@@ -58,9 +62,11 @@
             border-radius: 50%;
             animation: lds-ripple 1s cubic-bezier(0, 0.2, 0.8, 1) infinite;
         }
+
         .lds-ripple div:nth-child(2) {
             animation-delay: -0.5s;
         }
+
         @keyframes lds-ripple {
             0% {
                 top: 36px;
@@ -82,26 +88,30 @@
 <body class="d-flex">
 
 <div id="loading" class="fullscreen d-flex align-items-center justify-content-center">
-    <div class="lds-ripple"><div></div><div></div></div>
+    <div class="lds-ripple">
+        <div></div>
+        <div></div>
+    </div>
 </div>
 <div class="d-flex flex-grow-1 flex-column">
-    <div class="d-flex flex-row align-items-center p-2 border-bottom bg-light">
-        <div class="p-3 border-right text-center text-nowrap">
-            Inicio
-            <div id="startArticleName" class="font-weight-bold">-</div>
+    <div class="d-flex flex-column flex-xl-row align-items-xl-center p-2 border-bottom bg-light">
+        <div class="p-1 p-xl-3 text-xl-center text-nowrap">
+            Inicio&nbsp;
+            <span id="startArticleName" class="fw-bold d-xl-block">-</span>
         </div>
-        <div class="p-3 border-right text-center text-nowrap">
-            Pasos
-            <div id="articleCount" class="font-weight-bold">0</div>
+        <div class="p-1 p-xl-3 text-xl-center text-nowrap">
+            Pasos&nbsp;
+            <span id="articleCount" class="fw-bold d-xl-block">0</span>
+            <a id="toggleBreadcrumb" class="d-xl-none text-decoration-none">(ver)</a>
         </div>
         <div class="flex-grow-1">
-            <ol class="breadcrumb my-0 p-3 bg-transparent" id="breadcrumb">
+            <ol class="breadcrumb my-0 p-3 bg-transparent d-none d-xl-block flex-column flex-xl-row" id="breadcrumb">
                 <!-- DYNAMIC -->
             </ol>
         </div>
-        <div class="p-3 border-left text-center text-nowrap">
-            Destino
-            <div id="endArticleName" class="font-weight-bold">-</div>
+        <div class="p-1 p-xl-3 text-xl-center text-nowrap">
+            Destino&nbsp;
+            <span id="endArticleName" class="fw-bold d-xl-block">-</span>
         </div>
     </div>
     <div class="flex-grow-1 position-relative">
@@ -112,157 +122,180 @@
     </div>
 </div>
 
-
-<!-- Optional JavaScript -->
-<!-- jQuery first, then Popper.js, then Bootstrap JS -->
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
 <script>
-  const lang = 'es';
+    let lang = 'es';
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
 
-  const iframe = document.querySelector('#wiki');
-  let endArticle;
-  let breadcrumb = [];
+    const iframe = document.querySelector('#wiki');
+    let endArticle;
+    let breadcrumb = [];
 
-  const loadingElem = document.querySelector('#loading')
-  const startLoading = () => loadingElem.classList.remove('hide');
-  const endLoading = () => loadingElem.classList.add('hide');
+    const loadingElem = document.querySelector('#loading')
+    const startLoading = () => loadingElem.classList.remove('hide');
+    const endLoading = () => loadingElem.classList.add('hide');
 
-  const getArticle = (title) => {
-    startLoading();
-    return fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/html/${title}`)
-      .then(response => {
-        endLoading();
+    const getArticle = (title) => {
+        startLoading();
 
-        if (response.status === 404) {
-          throw new Error('404 Not Found');
+        const path = isMobile ? 'mobile-html' : 'html';
+
+        return fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/${path}/${title}`)
+            .then(response => {
+                if (response.status === 404) {
+                    throw new Error('404 Not Found');
+                }
+
+                return response.text();
+            })
+            .then(content => {
+                const redirectMatch = content.match('<link rel="mw:PageProp/redirect" href="./([^"]*)"');
+                if (redirectMatch) {
+                    return getArticle(redirectMatch[1]);
+                }
+
+                let parsedContent = content;
+                parsedContent = parsedContent.replace('<base href', '<base nohref');
+                parsedContent = parsedContent.replace('/w/load.php', `https://${lang}.wikipedia.org/w/load.php`);
+
+                const titleMatch = content.match('<link rel="dc:isVersionOf" href="\/\/\\w*\.wikipedia.org\/wiki\/([^"]*)"');
+
+                if (!titleMatch) {
+                    throw new Error('Not An Article');
+                }
+
+                return {
+                    pageId: content.match('<meta property="mw:pageId" content="(\\d*)"')[1],
+                    title: decodeURIComponent(titleMatch[1]),
+                    content: parsedContent,
+                };
+            });
+    };
+    const navigateArticle = (title) => {
+        console.info('Navigating', title);
+        getArticle(title).then(article => {
+            refreshBreadcrumb(article);
+
+            iframe.contentWindow.document.close();
+            iframe.contentWindow.document.write(article.content);
+            setTimeout(() => {
+                if (!isMobile) {
+                    iframe.contentWindow.document.body.style = 'padding: 25px; font-family: -apple-system, "system-ui", "Segoe UI", Roboto, Lato, Helvetica, Arial, sans-serif';
+                }
+                iframe.scrollTo(0, 0);
+
+                endLoading();
+            }, 250);
+            iframe.contentWindow.document.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+            });
+            iframe.contentWindow.document.addEventListener('auxclick', (event) => {
+                event.preventDefault();
+            });
+            iframe.contentWindow.document.addEventListener('click', (event) => {
+                const anchorTarget = event.composedPath().find(elem => elem.tagName === 'A');
+                if (!anchorTarget) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const href = anchorTarget.getAttribute('href');
+
+                const isRef = href.startsWith(`./${article.title}`) && href.includes('#');
+                if (isRef) {
+                    iframe.contentWindow.document.location.href = href.substring(href.indexOf('#'));
+                    return;
+                }
+
+                if (href.substring(0, 2) === './') {
+                    navigateArticle(href.substring(2));
+                }
+            });
+
+            checkWinner(article);
+        });
+    };
+
+    const cleanName = title => title.replace(/_/g, ' ');
+
+    const refreshBreadcrumb = (newArticle) => {
+        if (newArticle) {
+            breadcrumb.push(newArticle);
         }
 
-        return response.text();
-      })
-      .then(content => {
-        let parsedContent = content;
-        parsedContent = parsedContent.replace('<base href', '<base nohref');
-        parsedContent = parsedContent.replace('/w/load.php', `https://${lang}.wikipedia.org/w/load.php`);
+        const elemBreadcrumb = document.querySelector('#breadcrumb');
 
-        const titleMatch = content.match('<link rel="dc:isVersionOf" href="\/\/\\w*\.wikipedia.org\/wiki\/([^"]*)"/>');
+        elemBreadcrumb.innerHTML = '';
+        breadcrumb.slice(1).forEach((article) => {
+            let name = cleanName(article.title);
+            elemBreadcrumb.insertAdjacentHTML('beforeend', `<li class="breadcrumb-item">${name}</li>`);
+        });
 
-        if (!titleMatch) {
-          throw new Error('Not An Article');
+        document.querySelector('#articleCount').innerHTML = breadcrumb.length - 1;
+    };
+
+    const checkWinner = (article) => {
+        if (article.title === endArticle) {
+            document.querySelector('#winner').classList.remove('hide');
+        }
+    };
+
+    const getRandomTitle = () => {
+        return fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/random/title`)
+            .then(response => response.json())
+            .then(({items}) => {
+                return items[0].title;
+            });
+    };
+
+    const startGame = (start, end) => {
+        navigateArticle(start);
+
+        endArticle = end;
+        document.querySelector('#endArticleName').innerHTML = cleanName(end);
+        document.querySelector('#startArticleName').innerHTML = cleanName(start);
+
+        document.querySelector('#toggleBreadcrumb').addEventListener('click', () => {
+            document.querySelector('#breadcrumb').classList.toggle('d-none');
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(location.search);
+
+        if (params.has('lang')) {
+            lang = params.get('lang');
+            document.getElementsByTagName('html')[0].setAttribute('lang', lang);
         }
 
-        return {
-          pageId: content.match('<meta property="mw:pageId" content="(\\d*)"\/>')[1],
-          title: decodeURIComponent(titleMatch[1]),
-          content: parsedContent,
-        };
-      });
-  };
-  const navigateArticle = (title) => {
-    console.info('Navigating', title);
-    getArticle(title).then(article => {
-      refreshBreadcrumb(article);
-
-      iframe.contentWindow.document.close();
-      iframe.contentWindow.document.write(article.content);
-      iframe.contentWindow.document.body.style = 'padding: 25px';
-      iframe.contentWindow.document.addEventListener('contextmenu', (event) => {
-        event.preventDefault();
-      });
-      iframe.contentWindow.document.addEventListener('auxclick', (event) => {
-        event.preventDefault();
-      });
-      iframe.contentWindow.document.addEventListener('click', (event) => {
-        const anchorTarget = event.path.find(elem => elem.tagName === 'A');
-        if (anchorTarget) {
-          event.preventDefault();
-
-          const href = anchorTarget.getAttribute('href');
-
-          const isRef = href.startsWith(`./${article.title}`) && href.includes('#');
-          if (isRef) {
-            iframe.contentWindow.document.location.href = href.substring(href.indexOf('#'));
+        if (params.has('start') && params.has('end')) {
+            startGame(params.get('start'), params.get('end'));
             return;
-          }
-
-          if (href.substring(0, 2) === './') {
-            navigateArticle(href.substring(2));
-          }
         }
-      });
 
-      checkWinner(article);
-    });
-  };
+        Promise.all([
+            getRandomTitle(),
+            getRandomTitle(),
+        ]).then(([start, end]) => {
+            if (start === end) {
+                location.reload();
+                return;
+            }
 
-  const cleanName = title => title.replace(/_/g, ' ');
-
-  const refreshBreadcrumb = (newArticle) => {
-    if (newArticle) {
-      breadcrumb.push(newArticle);
-    }
-
-    const elemBreadcrumb = document.querySelector('#breadcrumb');
-
-    elemBreadcrumb.innerHTML = '';
-    breadcrumb.slice(1).forEach((article) => {
-      let name = cleanName(article.title);
-      elemBreadcrumb.insertAdjacentHTML('beforeend', `<li class="breadcrumb-item">${name}</li>`);
+            startGame(start, end);
+        });
     });
 
-    document.querySelector('#articleCount').innerHTML = breadcrumb.length - 1;
-  };
+    window.addEventListener('beforeunload', (event) => {
+        const confirmationMessage = 'Si te vas perdés todo.';
 
-  const checkWinner = (article) => {
-    if (article.title === endArticle) {
-      document.querySelector('#winner').classList.remove('hide');
-    }
-  };
-
-  const getRandomTitle = () => {
-    return fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/random/title`)
-      .then(response => response.json())
-      .then(({ items }) => {
-        return items[0].title;
-      });
-  };
-
-  const startGame = (start, end) => {
-    navigateArticle(start);
-
-    endArticle = end;
-    document.querySelector('#endArticleName').innerHTML = cleanName(end);
-    document.querySelector('#startArticleName').innerHTML = cleanName(start);
-  };
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(location.search);
-    if (params.has('start') && params.has('end')) {
-      startGame(params.get('start'), params.get('end'));
-      return;
-    }
-
-    Promise.all([
-      getRandomTitle(),
-      getRandomTitle(),
-    ]).then(([start, end]) => {
-      if (start === end) {
-        location.reload();
-        return;
-      }
-
-      startGame(start, end);
+        event.preventDefault();
+        event.returnValue = confirmationMessage;
+        return confirmationMessage;
     });
-  });
-
-  window.addEventListener('beforeunload', (event) => {
-    const confirmationMessage = 'Si te vas perdés todo.';
-
-    event.preventDefault();
-    event.returnValue = confirmationMessage;
-    return confirmationMessage;
-  });
 </script>
 </body>
 </html>
