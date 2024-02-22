@@ -219,6 +219,7 @@
         });
     };
 
+    const unCleanName = title => title.replace(/ /g, '_');
     const cleanName = title => title.replace(/_/g, ' ');
 
     const refreshBreadcrumb = (newArticle) => {
@@ -254,7 +255,7 @@
     const startGame = (start, end) => {
         navigateArticle(start);
 
-        endArticle = end;
+        endArticle = unCleanName(end);
         document.querySelector('#endArticleName').innerHTML = cleanName(end);
         document.querySelector('#startArticleName').innerHTML = cleanName(start);
 
